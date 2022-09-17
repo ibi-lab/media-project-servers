@@ -1,14 +1,14 @@
 from python
 
 WORKDIR /root
-RUN pip3 install Flask werkzeug 
-RUN pip3 install flask-wtf
-RUN pip3 install flask_bootstrap
-RUN pip install --upgrade google-cloud-texttospeech
-RUN pip3 install vosk
+RUN apt-get update && apt-get install -y libarchive-tools
+ADD requirements.txt /root/requirements.txt
+ADD media-project-credential.json /root/media-project-credential.json
+RUN pip3 install --upgrade -r requirements.txt
+RUN curl https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip | bsdtar -xzf -
 
 ADD app.py /root/app.py
-ADD model /root/model/
+RUN 
 # ADD voice2conv.wav /root/voice2conv.wav
 
 CMD ["python", "./app.py"]
