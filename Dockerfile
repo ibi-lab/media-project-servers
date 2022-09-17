@@ -8,7 +8,5 @@ RUN pip3 install --upgrade -r requirements.txt
 RUN curl https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip | bsdtar -xzf -
 
 ADD app.py /root/app.py
-RUN 
-# ADD voice2conv.wav /root/voice2conv.wav
 
 CMD ["python", "./app.py"]
