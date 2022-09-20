@@ -21,13 +21,70 @@ from flask import send_file
 from flask import url_for
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
+from flask_wtf.file import FileField, FileRequired
 from wtforms import SubmitField, TextAreaField, SelectField
 from wtforms.validators import DataRequired, Optional
+from werkzeug.utils import secure_filename
+
 import werkzeug
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from google.cloud import texttospeech
 
-html_template = '''
+stt_html_template = '''
+{% extends 'bootstrap/base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block title %}Speech to Text Application{% endblock %}
+
+{% block content %}
+
+    <style>
+        .label-txt {
+            font-size: 22px;
+            font-weight: bold;
+            color: #4285f4;
+        }
+
+        .lang-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0f9d58;
+            padding-right: 5px;
+        }
+
+        img {
+            padding: 0;
+            display: block;
+            margin: 0 auto;
+            max-height: 80%;
+            max-width: 80%;
+        }
+    </style>
+
+    <div class="container">
+        <h1 style="text-align: center;">
+            <span style="color: #0f9d58;">Text to Speech<br /></span>
+            </span>
+        </h1>
+
+        <div class="row">
+            <div class="col-md-16">
+                <form action="" method="post" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="form-group">
+                        <br><br>
+                        {{ form.speech_field.label(class_='label-txt') }}<br>
+                        {{ form.speech_field() }}<br>
+                    </div>
+                    {{ form.submit(class_='btn btn-default') }}
+                </form>
+            </div>
+        </div>
+    </div>>
+{% endblock %}
+'''
+
+
+tts_html_template = '''
 {% extends 'bootstrap/base.html' %}
 {% import 'bootstrap/wtf.html' as wtf %}
 {% block title %}Text to Speech Application{% endblock %}
@@ -88,7 +145,7 @@ bootstrap = Bootstrap(app)
 
 app.config['MAX_CONTENT_LENGTH'] = 128 * 1024 * 1024
 app.config['JSON_AS_ASCII'] = False
-app.config['SECRET_KEY'] = 'bendeghe-ekiem'
+app.config['SECRET_KEY'] = 'M3d1APr0j3cT'
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'media-project-credential.json'
 
 ###
@@ -112,25 +169,34 @@ rec = KaldiRecognizer(model, 44100)
 rec.SetWords(True)
 rec.SetPartialWords(True)
 
-@app.route('/sst', methods=['POST'])
-def upload_multipart():
 
-    if 'uploadFile' not in request.files:
-        make_response(jsonify({'error':'uploadFile is required.'}))
 
-    file = request.files['uploadFile']
-    fileName = file.filename
-    if '' == fileName:
-        make_response(jsonify({'error':'filename must not empty.'}))
+@app.route('/sst', methods=['GET', 'POST'])
+def speech_to_text_form():
+    try:
+        form = SpeechToTextForm()
 
-    wf = wave.open(file, "rb")
-    if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getcomptype() != "NONE":
-        return  jsonify({'error': "Audio file must be WAV format mono PCM."})
+        if request.method == 'POST':
+            if 'speech' not in request.files:
+                make_response(jsonify({'error':'speech: wave file object is required.'}))
 
-    ### あまり大きなファイルは想定していないので、全部を読み込む
-    data = wf.readframes(-1)
-    rec.AcceptWaveform(data)
-    return make_response(jsonify(json.loads(rec.Result())))
+            file = request.files['uploadFile']
+            fileName = file.filename
+            if '' == fileName:
+                make_response(jsonify({'error':'filename must not empty.'}))
+
+            wf = wave.open(file, "rb")
+            if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getcomptype() != "NONE":
+                return  jsonify({'error': "Audio file must be WAV format mono PCM."})
+
+            ### あまり大きなファイルは想定していないので、全部を読み込む
+            data = wf.readframes(-1)
+            rec.AcceptWaveform(data)
+            return make_response(jsonify(json.loads(rec.Result())))
+        return render_template_string(stt_html_template, form=form)
+    except:
+        return jsonify({'error': traceback.format_exc()})
+
 
 @app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)
 def handle_over_max_file_size(error):
@@ -167,7 +233,7 @@ def text_to_speech_form():
                 }
             )
             return redirect(url_for('.text_to_speech', messages=messages))
-        return render_template_string(html_template, form=form)
+        return render_template_string(tts_html_template, form=form)
     except:
         return jsonify({'error': traceback.format_exc()})
 
@@ -246,6 +312,15 @@ class TextToSpeechForm(FlaskForm):
         default=1
     )
     submit = SubmitField('Convert Text to Speech')
+
+
+class SpeechToTextForm(FlaskForm):
+    """
+    Create user form for submitting text for speech synthesis
+    """
+    speech_field = FileField(validators=[FileRequired()])
+
+    submit = SubmitField('Convert Speech to Text')
 
 # main
 if __name__ == "__main__":
