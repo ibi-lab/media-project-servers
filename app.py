@@ -30,6 +30,59 @@ import werkzeug
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from google.cloud import texttospeech
 
+base_html_template = '''
+{% extends 'bootstrap/base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block title %}Speech to Text Application{% endblock %}
+
+{% block content %}
+
+    <style>
+        .label-txt {
+            font-size: 22px;
+            font-weight: bold;
+            color: #4285f4;
+        }
+
+        .lang-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0f9d58;
+            padding-right: 5px;
+        }
+
+        img {
+            padding: 0;
+            display: block;
+            margin: 0 auto;
+            max-height: 80%;
+            max-width: 80%;
+        }
+    </style>
+
+    <div class="container">
+        <h1 style="text-align: center;">
+            <span style="color: #0f9d58;">Text to Speech<br /></span>
+            </span>
+        </h1>
+
+        <div class="row">
+            <div class="col-md-16">
+                <form action="" method="post" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="form-group">
+                        <br><br>
+                        {{ form.speech_field.label(class_='label-txt') }}<br>
+                        {{ form.speech_field() }}<br>
+                    </div>
+                    {{ form.submit(class_='btn btn-default') }}
+                </form>
+            </div>
+        </div>
+    </div>>
+{% endblock %}
+'''
+
 stt_html_template = '''
 {% extends 'bootstrap/base.html' %}
 {% import 'bootstrap/wtf.html' as wtf %}
@@ -238,7 +291,7 @@ def text_to_speech_form():
         return jsonify({'error': traceback.format_exc()})
 
 
-@app.route('/tts/translate')
+@app.route('/tts/convert')
 def text_to_speech():
     """
     Route to synthesize speech using Google Text-to-Speech API.

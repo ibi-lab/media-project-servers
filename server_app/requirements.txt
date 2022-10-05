@@ -1,0 +1,6 @@
+Flask
+werkzeug
+flask-wtf
+flask_bootstrap
+google-cloud-texttospeech
+vosk
