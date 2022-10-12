@@ -6,7 +6,10 @@ import json
 from datetime import datetime
 import wave
 import traceback
+import logging
 from io import BytesIO
+
+import platform
 
 from flask import Flask
 from flask import request
@@ -29,59 +32,8 @@ from werkzeug.utils import secure_filename
 import werkzeug
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from google.cloud import texttospeech
+import pexpect
 
-base_html_template = '''
-{% extends 'bootstrap/base.html' %}
-{% import 'bootstrap/wtf.html' as wtf %}
-{% block title %}Speech to Text Application{% endblock %}
-
-{% block content %}
-
-    <style>
-        .label-txt {
-            font-size: 22px;
-            font-weight: bold;
-            color: #4285f4;
-        }
-
-        .lang-label {
-            font-size: 16px;
-            font-weight: bold;
-            color: #0f9d58;
-            padding-right: 5px;
-        }
-
-        img {
-            padding: 0;
-            display: block;
-            margin: 0 auto;
-            max-height: 80%;
-            max-width: 80%;
-        }
-    </style>
-
-    <div class="container">
-        <h1 style="text-align: center;">
-            <span style="color: #0f9d58;">Text to Speech<br /></span>
-            </span>
-        </h1>
-
-        <div class="row">
-            <div class="col-md-16">
-                <form action="" method="post" novalidate>
-                    {{ form.hidden_tag() }}
-                    <div class="form-group">
-                        <br><br>
-                        {{ form.speech_field.label(class_='label-txt') }}<br>
-                        {{ form.speech_field() }}<br>
-                    </div>
-                    {{ form.submit(class_='btn btn-default') }}
-                </form>
-            </div>
-        </div>
-    </div>>
-{% endblock %}
-'''
 
 stt_html_template = '''
 {% extends 'bootstrap/base.html' %}
@@ -121,12 +73,12 @@ stt_html_template = '''
 
         <div class="row">
             <div class="col-md-16">
-                <form action="" method="post" novalidate>
+                <form action="" method="post" enctype="multipart/form-data" novalidate>
                     {{ form.hidden_tag() }}
                     <div class="form-group">
                         <br><br>
-                        {{ form.speech_field.label(class_='label-txt') }}<br>
-                        {{ form.speech_field() }}<br>
+                        {{ form.speech.label(class_='label-txt') }}<br>
+                        {{ form.speech() }}<br>
                     </div>
                     {{ form.submit(class_='btn btn-default') }}
                 </form>
@@ -223,22 +175,52 @@ rec.SetWords(True)
 rec.SetPartialWords(True)
 
 
-
-@app.route('/sst', methods=['GET', 'POST'])
-def speech_to_text_form():
+@app.route('/stt', methods=['GET', 'POST'])
+def speech_to_text_with_julius():
     try:
         form = SpeechToTextForm()
-
-        if request.method == 'POST':
-            if 'speech' not in request.files:
-                make_response(jsonify({'error':'speech: wave file object is required.'}))
-
-            file = request.files['uploadFile']
-            fileName = file.filename
+        if form.validate_on_submit():
+            f = form.speech.data
+            fileName = secure_filename(f.filename)
+            filepath = os.path.join(
+                app.instance_path, 'voices', fileName
+            )
+            if not os.path.exists(filepath):
+                os.makedirs(os.path.dirname(filepath))
+            f.save(filepath)
+            logging.error(filepath)
             if '' == fileName:
                 make_response(jsonify({'error':'filename must not empty.'}))
 
-            wf = wave.open(file, "rb")
+            julius = Julius()
+            return make_response(jsonify(julius.speech_to_text(filepath)))
+        return render_template('stt.html', form=form)
+    except:
+        return jsonify({'error': traceback.format_exc()})
+
+
+
+@app.route('/stt/vosk', methods=['GET', 'POST'])
+def speech_to_text_with_vosk():
+    try:
+        form = SpeechToTextForm()
+        if form.validate_on_submit():
+            f = form.speech.data
+            fileName = secure_filename(f.filename)
+            # f.save(os.path.join(
+            #     app.instance_path, 'photos', filename
+            # ))
+        # if request.method == 'POST':
+        #     logging.error(request.files)
+        #     if 'speech' not in request.files:
+        #         make_response(jsonify({'error':'speech: wave file object is required.'}))
+
+        #     file = request.files['speech']
+        #     fileName = file.filename
+            if '' == fileName:
+                make_response(jsonify({'error':'filename must not empty.'}))
+
+            wf = wave.open(f, "rb")
             if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getcomptype() != "NONE":
                 return  jsonify({'error': "Audio file must be WAV format mono PCM."})
 
@@ -286,7 +268,7 @@ def text_to_speech_form():
                 }
             )
             return redirect(url_for('.text_to_speech', messages=messages))
-        return render_template_string(tts_html_template, form=form)
+        return render_template('tts.html', form=form)
     except:
         return jsonify({'error': traceback.format_exc()})
 
@@ -371,10 +353,55 @@ class SpeechToTextForm(FlaskForm):
     """
     Create user form for submitting text for speech synthesis
     """
-    speech_field = FileField(validators=[FileRequired()])
+    speech = FileField(validators=[FileRequired()])
 
     submit = SubmitField('Convert Speech to Text')
 
+
+class Julius(object):
+    def __init__(
+        self,
+        julius_path='/usr/local/bin/julius',
+        main_conf='/usr/local/dictation-kit/main.jconf',
+        grammer_conf='/usr/local/dictation-kit/am-gmm.jconf'
+    ):
+        self.sh = pexpect.spawn(
+            '%s -C %s -C %s -nostrip -input rawfile' % (
+                julius_path, main_conf, grammer_conf
+            )
+        )
+    
+    def __del__(self):
+        self.sh.close()
+
+    def speech_to_text(self, wavefile_path):
+        try:
+            if not os.path.exists(wavefile_path):
+                raise Exception('wave file not exists')
+            logging.error('entering filename')
+            self.sh.expect('enter filename->')
+            self.sh.sendline(wavefile_path)
+            logging.error('filename entered')
+            self.sh.expect('pass1_best: ')
+            self.sh.expect('pass1_best_wordseq: ')
+            pass1_sentence = self.sh.before.decode(encoding='utf-8').strip()
+            logging.error('get passphases')
+            self.sh.expect('pass1_best_phonemeseq: ')
+            pass1_wordseq = self.sh.before.decode(encoding='utf-8').strip()
+            self.sh.expect('pass1_best_score: ')
+            pass1_phonemeseq = self.sh.before.decode(encoding='utf-8').strip()
+            self.sh.expect('###')
+            pass1_score = float(self.sh.before)
+            return {
+                'sentence': pass1_sentence,
+                'wordseq': pass1_wordseq,
+                'phonemeseq': pass1_phonemeseq,
+                'score': pass1_score
+            }
+        except:
+            logging.error(traceback.format_exc())
+            return {}
+
 # main
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=3000)
+    app.run(host='0.0.0.0', port=3000, debug=True)
