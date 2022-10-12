@@ -1,0 +1,130 @@
+{% extends 'bootstrap/base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block title %}Speech to Text Application{% endblock %}
+
+{% block content %}
+
+    <style>
+        .label-txt {
+            font-size: 22px;
+            font-weight: bold;
+            color: #4285f4;
+        }
+
+        .lang-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0f9d58;
+            padding-right: 5px;
+        }
+
+        img {
+            padding: 0;
+            display: block;
+            margin: 0 auto;
+            max-height: 80%;
+            max-width: 80%;
+        }
+    </style>
+
+<script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+
+    <script>
+        $(document).ready(function () {
+
+            $("#sttbtn").click(function (event) {
+                event.preventDefault();
+
+                console.log('posting speech data');
+
+                var form = $('#speech_post_form')[0];
+                var data = new FormData(form);
+                $.ajax({
+                    type: "POST",
+                    enctype: 'multipart/form-data',
+                    url: "/stt",
+                    data: data,
+                    processData: false,
+                    contentType: false,
+                    cache: false,
+                    timeout: 600000,
+                    success: function (data) {
+                        console.log('handling speech recog result in success');
+                        console.log(typeof(data));
+                        $('#stt-sentence').text(data['sentence']);
+                        $('#stt-phonemeseq').text(data['phonemeseq']);
+                        $('#stt-wordseq').text(data['wordseq']);
+                        $('#stt-results').text(JSON.stringify(data));
+                    },
+                    error: function (e) {
+                    }
+                });
+            });
+        });
+    </script>
+
+    <div class="container">
+        <h1 style="text-align: center;">
+            <span style="color: #0f9d58;">Text to Speech<br /></span>
+            </span>
+        </h1>
+
+        <div class="row">
+            <div class="col-md-16">
+                <form action="" method="post" enctype="multipart/form-data" novalidate id="speech_post_form">
+                    {{ form.hidden_tag() }}
+                    <div class="form-group">
+                        <br><br>
+                        {{ form.speech.label(class_='label-txt') }}<br>
+                        {{ form.speech() }}<br>
+                    </div>
+                    <button class="btn btn-primary" id="sttbtn">Speech to Text</button>
+                </form>
+            </div>
+            <br><br>
+        </div>
+
+        <div class="row">
+            <div class="col-md-16">
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <!-- 音声認識結果 -->
+                        <ul class="nav nav-tabs">
+                            <li class="active">
+                              <a href="#stt-sentence" data-toggle="tab">認識結果</a>
+                            </li>
+                            <li>
+                              <a href="#stt-phonemeseq" data-toggle="tab">音素</a>
+                            </li>
+                            <li>
+                              <a href="#stt-wordseq" data-toggle="tab">形態素</a>
+                            </li>
+                            <li>
+                             <a href="#stt-results" data-toggle="tab">返り値(原文)</a>
+                            </li>
+  
+                        </ul>
+                    </div>
+                    <div class="panel-body">
+                        <div class="tab-content">
+                            <div role="tabpanel" class="tab-pane active" id="stt-sentence">
+                                ここには音声認識結果が入ります
+                            </div>
+                            <div role="tabpanel" class="tab-pane" id="stt-phonemeseq">
+                                ここには音声認識で認識された音素列が入ります。
+                            </div>
+                            <div role="tabpanel" class="tab-pane" id="stt-wordseq">
+                                ここには音声認識で認識された各形態素ごとの結果と形態素のセットが入ります。
+                            </div>
+                            <div role="tabpanel" class="tab-pane" id="stt-results">
+                                ここには、サーバから返ってきた音声認識結果のJSON文字列が原文のまま入ります。
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+            </div>
+        </div>
+    </div>
+{% endblock %}
