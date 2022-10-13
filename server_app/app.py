@@ -98,16 +98,6 @@ def speech_to_text_with_vosk():
         if form.validate_on_submit():
             f = form.speech.data
             fileName = secure_filename(f.filename)
-            # f.save(os.path.join(
-            #     app.instance_path, 'photos', filename
-            # ))
-        # if request.method == 'POST':
-        #     logging.error(request.files)
-        #     if 'speech' not in request.files:
-        #         make_response(jsonify({'error':'speech: wave file object is required.'}))
-
-        #     file = request.files['speech']
-        #     fileName = file.filename
             if '' == fileName:
                 make_response(jsonify({'error':'filename must not empty.'}))
 
@@ -139,13 +129,6 @@ def text_to_speech_form():
         form = TextToSpeechForm()
 
         if request.method == 'POST':
-            # messages = json.dumps(
-            #     {
-            #         'text': form.text_field.data,
-            #         'language': lang,
-            #         'gender': gender
-            #     }
-            # )
             return redirect(
                 url_for(
                     '.text_to_speech', 
@@ -177,10 +160,6 @@ def text_to_speech():
     text = request.args['text']
     language = request.args['language']
     gender = request.args['gender']
-
-    logging.error(request.args)
-    # Instantiates a client
-    # client = texttospeech.TextToSpeechClient()
 
     # Instantiates a client
     client = texttospeech.TextToSpeechClient()
