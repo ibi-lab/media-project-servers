@@ -138,27 +138,22 @@ def text_to_speech_form():
     try:
         form = TextToSpeechForm()
 
-        # Instantiates a client
-        client = texttospeech.TextToSpeechClient()
-
-        # Get the language list
-        voices = client.list_voices()
-        voice_codes_list = list(dict.fromkeys([voice.language_codes[0] for voice in voices.voices]))
-        language_list = [(ind + 1, voice) for ind, voice in enumerate(voice_codes_list)]
-
         if request.method == 'POST':
-            lang = dict(language_list).get(int(form.language_options.data))
-            gender = dict(
-                [(1, texttospeech.SsmlVoiceGender.MALE), (2, texttospeech.SsmlVoiceGender.FEMALE)]
-            ).get(int(form.gender_options.data))
-            messages = json.dumps(
-                {
-                    'text': form.text_field.data,
-                    'language': lang,
-                    'gender': gender
-                }
+            # messages = json.dumps(
+            #     {
+            #         'text': form.text_field.data,
+            #         'language': lang,
+            #         'gender': gender
+            #     }
+            # )
+            return redirect(
+                url_for(
+                    '.text_to_speech', 
+                    text=form.text_field.data, 
+                    language=form.language_options.data, 
+                    gender=form.gender_options.data
+                )
             )
-            return redirect(url_for('.text_to_speech', messages=messages))
         return render_template('tts.html', form=form)
     except:
         return jsonify({'error': traceback.format_exc()})
@@ -171,19 +166,43 @@ def text_to_speech():
     """
 
     # Get requested text
-    messages = json.loads(request.args['messages'])
+    # messages = json.loads(request.args['messages'])
+    if not 'text' in request.args \
+        or not 'language' in request.args \
+            or not 'gender' in request.args:
+        return jsonify({
+            'error': 'invalid arguments. text, language, gender should be specified.'
+        })
+    
+    text = request.args['text']
+    language = request.args['language']
+    gender = request.args['gender']
+
+    logging.error(request.args)
+    # Instantiates a client
+    # client = texttospeech.TextToSpeechClient()
 
     # Instantiates a client
     client = texttospeech.TextToSpeechClient()
 
+    # Get the language list
+    voices = client.list_voices()
+    voice_codes_list = list(dict.fromkeys([voice.language_codes[0] for voice in voices.voices]))
+    language_list = [(ind + 1, voice) for ind, voice in enumerate(voice_codes_list)]
+
+    lang_ = dict(language_list).get(int(language))
+    gender_ = dict(
+        [(1, texttospeech.SsmlVoiceGender.MALE), (2, texttospeech.SsmlVoiceGender.FEMALE)]
+    ).get(int(gender))
+
     # Set the text input to be synthesized
-    synthesis_input = texttospeech.SynthesisInput(text=messages['text'])
+    synthesis_input = texttospeech.SynthesisInput(text=text)
 
     # Build the voice request, select the language code ("en-US") and the ssml
     # voice gender ("neutral")
     voice = texttospeech.VoiceSelectionParams(
-        language_code=messages['language'],
-        ssml_gender=messages['gender']
+        language_code=lang_,
+        ssml_gender=gender_
     )
 
     # Select the type of audio file you want returned

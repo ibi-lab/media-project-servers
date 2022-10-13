@@ -27,6 +27,55 @@
         }
     </style>
 
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+
+    <script>
+    $(document).ready(function () {
+
+        $("#ttsbtn").click(function (event) {
+            event.preventDefault();
+
+            console.log('posting text data');
+
+            var form = $('#tts_form')[0];
+            var data = new FormData(form);
+            console.log(data);
+
+            var get_options = {
+                text: data.get('text_field'),
+                language: data.get('language_options'),
+                gender: data.get('gender_options')
+            }
+
+            console.log(get_options);
+
+            // var url = new UR('/tts/convert');
+            var search = new URLSearchParams(get_options); 
+
+            // $.get(
+            //     "/tts/convert",
+            //     get_options
+            // ).done (function (data) {
+            //     if (data.redirect) {
+            //         console.log('handling speech synth result in success');
+            //         console.log(typeof(data));
+            //         // var fileURL = URL.createObjectURL(data);
+            //         var audio = $('<audio controls autoplaystyle="height: 30px; width: 500px;"></audio>');
+            //         // audio.src = fileURL;
+            //         audio.src = data.redirect;
+            //         $('#tts_results').append(audio);
+            //     }
+            // });
+
+            var audio = $('<audio controls autoplaystyle="height: 30px; width: 500px;"></audio>');
+            audio.attr('src', '/tts/convert?' + search.toString());
+            $('#tts_results').append(audio);
+        });
+
+    });
+    </script>
+
+
     <div class="container">
         <h1 style="text-align: center;">
             <span style="color: #0f9d58;">Text to Speech<br /></span>
@@ -35,7 +84,7 @@
 
         <div class="row">
             <div class="col-md-16">
-                <form action="" method="post" novalidate>
+                <form action="" method="post" novalidate id="tts_form">
                     {{ form.hidden_tag() }}
                     <div class="form-group">
                         <br><br>
@@ -44,9 +93,29 @@
                         {{ form.language_options.label(class_='lang-label') }} {{ form.language_options(formnovalidate=True) }}<br>
                         {{ form.gender_options.label(class_='lang-label') }} {{ form.gender_options(formnovalidate=True) }}
                     </div>
-                    {{ form.submit(class_='btn btn-default') }}
+                    <!-- {{ form.submit(class_='btn btn-default') }} -->
+                    <button class="btn btn-primary" id="ttsbtn">Text to Speech</button>
+
                 </form>
             </div>
+            <br><br>
         </div>
+
+        <div class="row">
+            <div class="col-md-16">
+
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <!-- 音声認識結果 -->
+                        音声合成結果
+                    </div>
+                    <div class="panel-body" id="tts_results">
+                        <p>ここには音声合成の結果が入ります</p>
+                    </div>
+                </div>
+            
+            </div>
+        </div>
+
     </div>>
 {% endblock %}
