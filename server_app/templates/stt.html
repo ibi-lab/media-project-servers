@@ -77,6 +77,8 @@
                         <br><br>
                         {{ form.speech.label(class_='label-txt') }}<br>
                         {{ form.speech() }}<br>
+                        {{ form.engine.label(class_='label-txt') }} {{ form.engine(formvalidate=True) }}<br>
+
                     </div>
                     <button class="btn btn-primary" id="sttbtn">Speech to Text</button>
                 </form>

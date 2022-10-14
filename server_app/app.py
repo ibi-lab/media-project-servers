@@ -65,6 +65,10 @@ rec = KaldiRecognizer(model, 44100)
 rec.SetWords(True)
 rec.SetPartialWords(True)
 
+@app.route('/', methods=['GET', 'POST'])
+def home():
+    return render_template('home.html')
+
 
 @app.route('/stt', methods=['GET', 'POST'])
 def speech_to_text_with_julius():
@@ -109,7 +113,7 @@ def speech_to_text_with_vosk():
             data = wf.readframes(-1)
             rec.AcceptWaveform(data)
             return make_response(jsonify(json.loads(rec.Result())))
-        return render_template_string(stt_html_template, form=form)
+        return render_template_string('stt.html', form=form)
     except:
         return jsonify({'error': traceback.format_exc()})
 
@@ -243,7 +247,10 @@ class SpeechToTextForm(FlaskForm):
     Create user form for submitting text for speech synthesis
     """
     speech = FileField(validators=[FileRequired()])
-
+    engine = SelectField(
+        u'Speech Recognition Engine',
+        choices=[(1, 'julius'), (2, 'vosk')]
+    )
     submit = SubmitField('Convert Speech to Text')
 
 
