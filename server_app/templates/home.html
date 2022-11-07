@@ -1,0 +1,46 @@
+{% extends 'bootstrap/base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block title %}Speech to Text Application{% endblock %}
+
+{% block content %}
+
+    <style>
+        .label-txt {
+            font-size: 22px;
+            font-weight: bold;
+            color: #4285f4;
+        }
+
+        .lang-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0f9d58;
+            padding-right: 5px;
+        }
+
+        img {
+            padding: 0;
+            display: block;
+            margin: 0 auto;
+            max-height: 80%;
+            max-width: 80%;
+        }
+    </style>
+
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+
+
+    <div class="container">
+        <h1 style="text-align: center;">
+            <span style="color: #0f9d58;">Speech to Text / Text to Speech<br /></span>
+            </span>
+        </h1>
+
+        <div class="jumbotron">
+            <p>このサイトは、情報メディアプロジェクトで扱う音声認識・合成のトップサイトです。各APIには以下のリンクからアクセスしてください</p>
+            <a class='btn btn-primary' href="/tts">音声合成</a>
+            <a class='btn btn-primary' href="/stt">音声認識</a>
+            <!-- <a class='btn btn-primary' href="/gedit">カスタム文法</a> -->
+        </div>
+    </div>
+{% endblock %}

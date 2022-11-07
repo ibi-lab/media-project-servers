@@ -44,32 +44,21 @@
             var get_options = {
                 text: data.get('text_field'),
                 language: data.get('language_options'),
-                gender: data.get('gender_options')
+                gender: data.get('gender_options'),
+                input_type: data.get('input_type')
             }
 
             console.log(get_options);
 
             // var url = new UR('/tts/convert');
             var search = new URLSearchParams(get_options); 
-
-            // $.get(
-            //     "/tts/convert",
-            //     get_options
-            // ).done (function (data) {
-            //     if (data.redirect) {
-            //         console.log('handling speech synth result in success');
-            //         console.log(typeof(data));
-            //         // var fileURL = URL.createObjectURL(data);
-            //         var audio = $('<audio controls autoplaystyle="height: 30px; width: 500px;"></audio>');
-            //         // audio.src = fileURL;
-            //         audio.src = data.redirect;
-            //         $('#tts_results').append(audio);
-            //     }
-            // });
-
             var audio = $('<audio controls autoplaystyle="height: 30px; width: 500px;"></audio>');
             audio.attr('src', '/tts/convert?' + search.toString());
+            // var download_link = $('<a class="btn btn-primary" download>合成されたファイル</a>');
+            // download_link.attr('href', '/tts/convert?' + search.toString());
             $('#tts_results').append(audio);
+            // $('#tts_results').append(download_link);
+
         });
 
     });
@@ -91,7 +80,8 @@
                         {{ form.text_field.label(class_='label-txt') }}<br>
                         {{ form.text_field(rows=10, cols=180, class_='form-control') }}<br>
                         {{ form.language_options.label(class_='lang-label') }} {{ form.language_options(formnovalidate=True) }}<br>
-                        {{ form.gender_options.label(class_='lang-label') }} {{ form.gender_options(formnovalidate=True) }}
+                        {{ form.gender_options.label(class_='lang-label') }} {{ form.gender_options(formnovalidate=True) }}<br>
+                        {{ form.input_type.label(class_='lang-label') }} {{ form.input_type(formnovalidate=True) }}
                     </div>
                     <!-- {{ form.submit(class_='btn btn-default') }} -->
                     <button class="btn btn-primary" id="ttsbtn">Text to Speech</button>

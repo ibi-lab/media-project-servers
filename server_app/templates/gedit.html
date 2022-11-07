@@ -1,0 +1,145 @@
+{% extends 'bootstrap/base.html' %}
+{% import 'bootstrap/wtf.html' as wtf %}
+{% block title %}Text to Speech Application{% endblock %}
+
+{% block content %}
+
+    <style>
+        .label-txt {
+            font-size: 22px;
+            font-weight: bold;
+            color: #4285f4;
+        }
+
+        .lang-label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #0f9d58;
+            padding-right: 5px;
+        }
+
+        img {
+            padding: 0;
+            display: block;
+            margin: 0 auto;
+            max-height: 80%;
+            max-width: 80%;
+        }
+    </style>
+
+    <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+
+    <script>
+    $(document).ready(function () {
+
+        $("#ttsbtn").click(function (event) {
+            event.preventDefault();
+
+            console.log('posting text data');
+
+            var form = $('#tts_form')[0];
+            var data = new FormData(form);
+            console.log(data);
+
+            var get_options = {
+                text: data.get('text_field'),
+                language: data.get('language_options'),
+                gender: data.get('gender_options')
+            }
+
+            console.log(get_options);
+
+            // var url = new UR('/tts/convert');
+            var search = new URLSearchParams(get_options); 
+
+            var audio = $('<audio controls autoplaystyle="height: 30px; width: 500px;"></audio>');
+            audio.attr('src', '/tts/convert?' + search.toString());
+            $('#tts_results').append(audio);
+        });
+
+    });
+    </script>
+
+
+    <div class="container">
+        <h1 style="text-align: center;">
+            <span style="color: #0f9d58;">Grammer Editor<br /></span>
+            </span>
+        </h1>
+
+        <div class="row">
+            <div class="col-md-16">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <!-- 音声認識結果 -->
+                        <ul class="nav nav-tabs">
+                            <li class="active">
+                              <a href="#gram-yomi" data-toggle="tab">読み</a>
+                            </li>
+                            <li>
+                              <a href="#gram-voca" data-toggle="tab">ボキャブラリ</a>
+                            </li>
+                            <li>
+                              <a href="#gram-phone" data-toggle="tab">音素表現</a>
+                            </li>
+                            <li>
+                             <a href="#gram-gram" data-toggle="tab">構文</a>
+                            </li>
+  
+                        </ul>
+                    </div>
+                    <div class="panel-body">
+                        <div class="tab-content">
+                            <div role="tabpanel" class="tab-pane active" id="gram-yomi">
+                                <form action="" method="post" novalidate id="gram_yomi_form">
+                                    {{ yomi_form.hidden_tag() }}
+                                    <div class="form-group">
+                                        <br><br>
+                                        {{ yomi_form.text_field.label(class_='label-txt') }}<br>
+                                        {{ yomi_form.text_field(rows=10, cols=180, class_='form-control') }}<br>
+                                    </div>
+                                    <button class="btn btn-primary" id="yomibtn">登録</button>
+                                </form>
+                            </div>
+                            <div role="tabpanel" class="tab-pane active" id="gram-voca">
+                                <form action="" method="post" novalidate id="gram_voca_form">
+                                    {{ voca_form.hidden_tag() }}
+                                    <div class="form-group">
+                                        <br><br>
+                                        {{ voca_form.text_field.label(class_='label-txt') }}<br>
+                                        {{ voca_form.text_field(rows=10, cols=180, class_='form-control') }}<br>
+                                    </div>
+                                    <button class="btn btn-primary" id="vocabtn">登録</button>
+                                </form>
+                            </div>
+                            <div role="tabpanel" class="tab-pane active" id="gram-phone">
+                                <form action="" method="post" novalidate id="gram_phone_form">
+                                    {{ phone_form.hidden_tag() }}
+                                    <div class="form-group">
+                                        <br><br>
+                                        {{ phone_form.text_field.label(class_='label-txt') }}<br>
+                                        {{ phone_form.text_field(rows=10, cols=180, class_='form-control') }}<br>
+                                    </div>
+                                    <button class="btn btn-primary" id="phonebtn">登録</button>
+                                </form>
+                            </div>
+                            <div role="tabpanel" class="tab-pane active" id="gram-yomi">
+                                <form action="" method="post" novalidate id="gram_yomi_form">
+                                    {{ grammer_form.hidden_tag() }}
+                                    <div class="form-group">
+                                        <br><br>
+                                        {{ grammer_form.text_field.label(class_='label-txt') }}<br>
+                                        {{ grammer_form.text_field(rows=10, cols=180, class_='form-control') }}<br>
+                                    </div>
+s                                    <button class="btn btn-primary" id="grammerbtn">登録</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <br><br>
+        </div>
+
+    </div>>
+{% endblock %}

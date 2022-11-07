@@ -8,9 +8,13 @@ import wave
 import traceback
 import logging
 from io import BytesIO
+import datetime
+import os
+from os.path import isdir, isfile, join
+import signal
 
 import platform
-
+from flask import abort
 from flask import Flask
 from flask import request
 from flask import make_response
@@ -32,17 +36,22 @@ from werkzeug.utils import secure_filename
 import werkzeug
 from vosk import Model, KaldiRecognizer, SetLogLevel
 from google.cloud import texttospeech
-import pexpect
-
+from google.cloud import speech
+from google.protobuf.json_format import MessageToJson, MessageToDict
 
 # flask
 app = Flask(__name__)
 bootstrap = Bootstrap(app)
 
-app.config['MAX_CONTENT_LENGTH'] = 128 * 1024 * 1024
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024 * 1024
 app.config['JSON_AS_ASCII'] = False
 app.config['SECRET_KEY'] = 'M3d1APr0j3cT'
 os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'media-project-credential.json'
+
+from forms import TextToSpeechForm, SpeechToTextForm, \
+    STTYomiForm, STTVocaForm, STTPhoneForm, STTPGrammerForm
+
+from backbones import Julius
 
 ###
 ### モデルは各国の言語モデルが以下に公開されている
@@ -61,7 +70,7 @@ os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = 'media-project-credential.json'
 model = Model("vosk-model-small-ja-0.22")
 
 ### 対象の音声は44.1kHzのサンプリングレートのみ
-rec = KaldiRecognizer(model, 44100)
+rec = KaldiRecognizer(model, 16000)
 rec.SetWords(True)
 rec.SetPartialWords(True)
 
@@ -71,6 +80,116 @@ def home():
 
 
 @app.route('/stt', methods=['GET', 'POST'])
+def speech_to_text():
+    try:
+        form = SpeechToTextForm()
+        if form.validate_on_submit():
+            engine = form.engine.data
+            if engine == '1':
+                logging.error('Julius speech to text is selected')
+                f = form.speech.data
+                fileName = secure_filename(f.filename)
+                filepath = os.path.join(
+                    app.instance_path, 'voices', fileName
+                )
+                if not os.path.exists(filepath):
+                    os.makedirs(os.path.dirname(filepath))
+                f.save(filepath)
+                logging.error(filepath)
+                if '' == fileName:
+                    make_response(jsonify({'error':'filename must not empty.'}))
+
+                julius = Julius()
+                return make_response(jsonify(julius.speech_to_text(filepath)))
+            elif engine == '2': ## Mode Kaldi
+                logging.error('Kaldi speech to text is selected')
+                f = form.speech.data
+                fileName = secure_filename(f.filename)
+                if '' == fileName:
+                    make_response(jsonify({'error':'filename must not empty.'}))
+
+                wf = wave.open(f, "rb")
+                if wf.getnchannels() != 1 or wf.getsampwidth() != 2 or wf.getcomptype() != "NONE":
+                    return  jsonify({'error': "Audio file must be WAV format mono PCM."})
+                data = wf.readframes(-1)
+                # new_rate = 44100
+                # data = 
+                rec.AcceptWaveform(data)
+                return make_response(jsonify(json.loads(rec.Result())))
+            elif engine == '3':
+                logging.error('gcp speech to text is selected')
+                f = form.speech.data
+                client = speech.SpeechClient()
+                logging.error('client created')
+                audio = speech.RecognitionAudio(content=f.read())
+                logging.error('audio created')
+                config = speech.RecognitionConfig(
+                    encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                    sample_rate_hertz=16000,
+                    language_code="ja-JP",
+                )
+                logging.error('config done and go operation')
+                operation = client.long_running_recognize(config=config, audio=audio)
+
+                # print("Waiting for operation to complete...")
+                response = operation.result(timeout=90)
+                for result in response.results:
+                    # The first alternative is the most likely one for this portion.
+                    logging.error(u"Transcript: {}".format(result.alternatives[0].transcript))
+                    logging.error("Confidence: {}".format(result.alternatives[0].confidence))            
+                return make_response(jsonify(MessageToDict(response._pb)))
+            else:
+                logging.error('no mode')
+        return render_template('stt.html', form=form)
+    except:
+        return jsonify({'error': traceback.format_exc()})
+
+
+@app.route('/stt_gcloud', methods=['GET', 'POST'])
+def speech_to_text_with_gcloud():
+    try:
+        form = SpeechToTextForm()
+
+        if form.validate_on_submit():
+            f = form.speech.data
+            # fileName = secure_filename(f.filename)
+            # filepath = os.path.join(
+            #     app.instance_path, 'voices', fileName
+            # )
+            # if not os.path.exists(filepath):
+            #     os.makedirs(os.path.dirname(filepath))
+            # f.save(filepath)
+            # logging.error(filepath)
+            # if '' == fileName:
+            #     make_response(jsonify({'error':'filename must not empty.'}))
+            logging.error('stt form is valid')
+            client = speech.SpeechClient()
+            logging.error('client created')
+            audio = speech.RecognitionAudio(content=f.read())
+            logging.error('audio created')
+            config = speech.RecognitionConfig(
+                encoding=speech.RecognitionConfig.AudioEncoding.LINEAR16,
+                sample_rate_hertz=16000,
+                language_code="ja-JP",
+            )
+
+            logging.error('config done and go operation')
+            operation = client.long_running_recognize(config=config, audio=audio)
+
+            # print("Waiting for operation to complete...")
+            response = operation.result(timeout=90)
+            for result in response.results:
+                # The first alternative is the most likely one for this portion.
+                logging.error(u"Transcript: {}".format(result.alternatives[0].transcript))
+                logging.error("Confidence: {}".format(result.alternatives[0].confidence))            
+            return make_response(jsonify(MessageToDict(response._pb)))
+        return render_template('stt.html', form=form)
+    except:
+        logging.error(traceback.format_exc())
+        return jsonify({'error': traceback.format_exc()})
+
+
+@app.route('/stt_julius', methods=['GET', 'POST'])
 def speech_to_text_with_julius():
     try:
         form = SpeechToTextForm()
@@ -138,7 +257,8 @@ def text_to_speech_form():
                     '.text_to_speech', 
                     text=form.text_field.data, 
                     language=form.language_options.data, 
-                    gender=form.gender_options.data
+                    gender=form.gender_options.data,
+                    input_type=form.input_type.data
                 )
             )
         return render_template('tts.html', form=form)
@@ -156,14 +276,16 @@ def text_to_speech():
     # messages = json.loads(request.args['messages'])
     if not 'text' in request.args \
         or not 'language' in request.args \
-            or not 'gender' in request.args:
+            or not 'gender' in request.args \
+            or not 'input_type' in request.args:
         return jsonify({
-            'error': 'invalid arguments. text, language, gender should be specified.'
+            'error': 'invalid arguments. text, language, gender, input_type should be specified.'
         })
     
     text = request.args['text']
     language = request.args['language']
     gender = request.args['gender']
+    input_type = request.args['input_type']
 
     # Instantiates a client
     client = texttospeech.TextToSpeechClient()
@@ -179,7 +301,12 @@ def text_to_speech():
     ).get(int(gender))
 
     # Set the text input to be synthesized
-    synthesis_input = texttospeech.SynthesisInput(text=text)
+    # logging.error('input_type: %s', input_type)
+    if input_type == "1":
+        synthesis_input = texttospeech.SynthesisInput(text=text)
+    else:
+        logging.error('type ssml')
+        synthesis_input = texttospeech.SynthesisInput(ssml=text)
 
     # Build the voice request, select the language code ("en-US") and the ssml
     # voice gender ("neutral")
@@ -190,7 +317,9 @@ def text_to_speech():
 
     # Select the type of audio file you want returned
     audio_config = texttospeech.AudioConfig(
-        audio_encoding=texttospeech.AudioEncoding.MP3
+        # audio_encoding=texttospeech.AudioEncoding.MP3
+        audio_encoding=texttospeech.AudioEncoding.LINEAR16,
+        sample_rate_hertz=16000
     )
 
     # Perform the text-to-speech request on the text input with the selected
@@ -204,100 +333,104 @@ def text_to_speech():
     # The response's audio_content is binary.
     file_obj = BytesIO()
     file_obj.write(response.audio_content)
-    print('Audio content written to file "output.mp3"')
-
-    return send_file(file_obj, download_name='output.mp3')
-
-
-class TextToSpeechForm(FlaskForm):
-    """
-    Create user form for submitting text for speech synthesis
-    """
-    # Instantiates a client
-    client = texttospeech.TextToSpeechClient()
-
-    # Performs the list voices request
-    voices = client.list_voices()
-
-    # Get language list
-    voice_codes_list = list(dict.fromkeys([voice.language_codes[0] for voice in voices.voices]))
-    language_list = [(ind + 1, voice) for ind, voice in enumerate(voice_codes_list)]
-
-    # Get voice gender
-    voice_gender = [(1, "Male"), (2, "Female")]
-
-    text_field = TextAreaField('Input Text', validators=[DataRequired()])
-    language_options = SelectField(
-        u'Input Language',
-        validators=[Optional()],
-        choices=language_list,
-        default=9 ## ja-JP
+    print('Audio content written to file "output.wav"')
+    file_obj.seek(0)
+    return send_file(
+        file_obj, 
+        as_attachment=True, 
+        download_name='output.wav', 
+        mimetype='audio/wav'
     )
-    gender_options = SelectField(
-        u'Voice Gender',
-        validators=[Optional()],
-        choices=voice_gender,
-        default=1
-    )
-    submit = SubmitField('Convert Text to Speech')
 
 
-class SpeechToTextForm(FlaskForm):
-    """
-    Create user form for submitting text for speech synthesis
-    """
-    speech = FileField(validators=[FileRequired()])
-    engine = SelectField(
-        u'Speech Recognition Engine',
-        choices=[(1, 'julius'), (2, 'vosk')]
-    )
-    submit = SubmitField('Convert Speech to Text')
 
+@app.route('/gedit', methods=['GET', 'POST'])
+def dict_editors():
+    try:
+        yomi_form = STTYomiForm(prefix='yomi_')
+        voca_form = STTVocaForm(prefix='voca_')
+        phone_form = STTPhoneForm(prefix='phone_')
+        grammer_form = STTPGrammerForm(prefix='grammer_')
 
-class Julius(object):
-    def __init__(
-        self,
-        julius_path='/usr/local/bin/julius',
-        main_conf='/usr/local/dictation-kit/main.jconf',
-        grammer_conf='/usr/local/dictation-kit/am-gmm.jconf'
-    ):
-        self.sh = pexpect.spawn(
-            '%s -C %s -C %s -nostrip -input rawfile' % (
-                julius_path, main_conf, grammer_conf
-            )
+        if yomi_form.validate_on_submit() and yomi_form.submit.data:
+            logging.error('yomi_form submitted.')
+        elif voca_form.validate_on_submit() and voca_form.submit.data:
+            logging.error('voca_form submitted.')
+        elif phone_form.validate_on_submit() and phone_form.submit.data:
+            logging.error('phone_form submitted.')        
+        elif grammer_form.validate_on_submit() and phone_form.submit.data:
+            logging.error('grammer_form submitted.')
+
+        return render_template(
+            'gedit.html', 
+            yomi_form=yomi_form,
+            voca_form=voca_form,
+            phone_form=phone_form,
+            grammer_form=grammer_form
         )
-    
-    def __del__(self):
-        self.sh.close()
+    except:
+        return jsonify({'error': traceback.format_exc()})
 
-    def speech_to_text(self, wavefile_path):
+
+
+# Set config for file system path and filename prefix
+mnt_dir = os.environ.get('MNT_DIR', '/mnt/nfs/filestore')
+filename = os.environ.get('FILENAME', 'test')
+
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def index(path):
+    """
+    Redirects to the file system path to interact with file system
+    Writes a new file on each request
+    """
+    # Redirect to mount path
+    path = '/' + path
+    if (not path.startswith(mnt_dir)):
+        return redirect(mnt_dir)
+
+    # Add parent mount path link
+    html = '<html><body>\n'
+    if (path != mnt_dir):
+        html += f'<a href=\"{mnt_dir}\">{mnt_dir}</a><br/><br/>\n'
+    else:
+        # Write a new test file
         try:
-            if not os.path.exists(wavefile_path):
-                raise Exception('wave file not exists')
-            logging.error('entering filename')
-            self.sh.expect('enter filename->')
-            self.sh.sendline(wavefile_path)
-            logging.error('filename entered')
-            self.sh.expect('pass1_best: ')
-            self.sh.expect('pass1_best_wordseq: ')
-            pass1_sentence = self.sh.before.decode(encoding='utf-8').strip()
-            logging.error('get passphases')
-            self.sh.expect('pass1_best_phonemeseq: ')
-            pass1_wordseq = self.sh.before.decode(encoding='utf-8').strip()
-            self.sh.expect('pass1_best_score: ')
-            pass1_phonemeseq = self.sh.before.decode(encoding='utf-8').strip()
-            self.sh.expect('###')
-            pass1_score = float(self.sh.before)
-            return {
-                'sentence': pass1_sentence,
-                'wordseq': pass1_wordseq,
-                'phonemeseq': pass1_phonemeseq,
-                'score': pass1_score
-            }
-        except:
-            logging.error(traceback.format_exc())
-            return {}
+            write_file(mnt_dir, filename)
+        except Exception:
+            abort(500, description='Error writing file.')
+
+    # Return all files if path is a directory, else return the file
+    if (isdir(path)):
+        for file in os.listdir(path):
+            full_path = join(path, file)
+            if isfile(full_path):
+                html += f'<a href=\"{full_path}\">{file}</a><br/>\n'
+    else:
+        try:
+            html += read_file(path)
+        except Exception:
+            abort(404, description='Error retrieving file.')
+
+    html += '</body></html>\n'
+    return html
+
+
+def write_file(mnt_dir, filename):
+    '''Write files to a directory with date created'''
+    date = datetime.datetime.utcnow()
+    file_date = '{dt:%a}-{dt:%b}-{dt:%d}-{dt:%H}:{dt:%M}-{dt:%Y}'.format(dt=date)
+    with open(f'{mnt_dir}/{filename}-{file_date}.txt', 'a') as f:
+        f.write(f'This test file was created on {date}.')
+
+
+def read_file(full_path):
+    '''Read files and return contents'''
+    with open(full_path, 'r') as reader:
+        return reader.read()
+
 
 # main
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=3000, debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 3000)), debug=True)

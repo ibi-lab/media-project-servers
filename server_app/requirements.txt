@@ -3,5 +3,7 @@ werkzeug
 flask-wtf
 flask_bootstrap
 google-cloud-texttospeech
+google-cloud-speech
 vosk
 pexpect
+gunicorn==20.1.0
