@@ -39,6 +39,8 @@
 
                 var form = $('#speech_post_form')[0];
                 var data = new FormData(form);
+                $('#sttbtn').prop('disabled', true);
+
                 $.ajax({
                     type: "POST",
                     enctype: 'multipart/form-data',
@@ -52,13 +54,15 @@
                         console.log('handling speech recog result in success');
                         console.log(typeof(data));
                         console.log(data);
+                        
+
                         if ('results' in data) {
                             $('#srheader').empty();
                             $('#srcontent').empty();
 
                             results = data['results'];
                             results.forEach(result => {
-                                console.log(result);
+                                // console.log(result);
                                 var cnt = 1;
                                 alternatives = result['alternatives'];
                                 alternatives.forEach(alternative => {
@@ -80,11 +84,13 @@
                             );
                             $('#srcontent').append(
                                 $(
-                                    '<div role="tabpanel" class="tab-pane active" id="stt-data"><code>'
+                                    '<div role="tabpanel" class="tab-pane active" id="stt-data">'
                                     + JSON.stringify(data, null , "\t")
-                                    + '</code></div>'
+                                    + '</div>'
                                 )
-                            );                                   
+                            ); 
+                            $('.nav-tabs a[href="#stt-data"]').tab('show');
+                                  
 
                         } else if ('sentence' in data) {
                             console.log('julius results detected');
@@ -125,16 +131,13 @@
                             );
                             $('#srcontent').append(
                                 $(
-                                    '<div role="tabpanel" class="tab-pane active" id="stt-data"><code>'
+                                    '<div role="tabpanel" class="tab-pane active" id="stt-data">'
                                     + JSON.stringify(data, null , "\t")
-                                    + '</code></div>'
+                                    + '</div>'
                                 )
                             );
+                            $('.nav-tabs a[href="#stt-data"]').tab('show');
 
-                            // $('#stt-sentence').text(data['sentence']);
-                            // $('#stt-phonemeseq').text(data['phonemeseq']);
-                            // $('#stt-wordseq').text(data['wordseq']);
-                            // $('#stt-results').text(JSON.stringify(data));
                         } else {
                             $('#srheader').empty();
                             $('#srcontent').empty();
@@ -154,15 +157,33 @@
                             );
                             $('#srcontent').append(
                                 $(
-                                    '<div role="tabpanel" class="tab-pane active" id="stt-data"><code>'
+                                    '<div role="tabpanel" class="tab-pane active" id="stt-data">'
                                     + JSON.stringify(data, null , "\t")
-                                    + '</code></div>'
+                                    + '</div>'
                                 )
                             );
-
+                            $('.nav-tabs a[href="#stt-data"]').tab('show');
                         }
+                        $('#sttbtn').prop('disabled', false);
                     },
-                    error: function (e) {
+                    error: function (XMLHttpRequest, textStatus, errorThrown) {
+                        console.log("XMLHttpRequest : " + XMLHttpRequest.status);
+                        console.log("textStatus     : " + textStatus);
+                        console.log("errorThrown    : " + errorThrown.message);
+                        $('#srheader').append(
+                                $('<li><a href="#stt-data" data-toggle="tab">ERROR</a></li>')
+                            );
+                        $('#srcontent').append(
+                            $(
+                                '<div role="tabpanel" class="tab-pane active" id="stt-data">'
+                                + "XMLHttpRequest : " + XMLHttpRequest.status + '<br>'
+                                + "textStatus     : " + textStatus + '<br>'
+                                + "errorThrown    : " + errorThrown.message
+                                + '</div>'
+                            )
+                        );
+
+                        $('#sttbtn').prop('disabled', false);
                     }
                 });
             });
@@ -195,39 +216,14 @@
         <div class="row">
             <div class="col-md-16">
 
-                <div class="panel panel-default">
+                <div class="panel panel-default" id="'srpanel'">
                     <div class="panel-heading">
                         <!-- 音声認識結果 -->
                         <ul class="nav nav-tabs" id="srheader">
-                            <!-- <li class="active">
-                              <a href="#stt-sentence" data-toggle="tab">認識結果</a>
-                            </li>
-                            <li>
-                              <a href="#stt-phonemeseq" data-toggle="tab">音素</a>
-                            </li>
-                            <li>
-                              <a href="#stt-wordseq" data-toggle="tab">形態素</a>
-                            </li>
-                            <li>
-                             <a href="#stt-results" data-toggle="tab">返り値(原文)</a>
-                            </li> -->
-  
                         </ul>
                     </div>
                     <div class="panel-body">
                         <div class="tab-content" id="srcontent">
-                            <!-- <div role="tabpanel" class="tab-pane active" id="stt-sentence">
-                                ここには音声認識結果が入ります
-                            </div>
-                            <div role="tabpanel" class="tab-pane" id="stt-phonemeseq">
-                                ここには音声認識で認識された音素列が入ります。
-                            </div>
-                            <div role="tabpanel" class="tab-pane" id="stt-wordseq">
-                                ここには音声認識で認識された各形態素ごとの結果と形態素のセットが入ります。
-                            </div>
-                            <div role="tabpanel" class="tab-pane" id="stt-results">
-                                ここには、サーバから返ってきた音声認識結果のJSON文字列が原文のまま入ります。
-                            </div> -->
                         </div>
                     </div>
                 </div>

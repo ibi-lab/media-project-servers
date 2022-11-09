@@ -29,12 +29,12 @@ class TextToSpeechForm(FlaskForm):
     voice_gender = [(1, "Male"), (2, "Female")]
 
     text_field = TextAreaField('Input Text', validators=[DataRequired()])
-    language_options = SelectField(
-        u'Input Language',
-        validators=[Optional()],
-        choices=language_list,
-        default=9 ## ja-JP
-    )
+    # language_options = SelectField(
+    #     u'Input Language',
+    #     validators=[Optional()],
+    #     choices=language_list,
+    #     default=9 ## ja-JP
+    # )
     gender_options = SelectField(
         u'Voice Gender',
         validators=[Optional()],

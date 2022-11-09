@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import pexpect
 import traceback
 import logging
@@ -33,7 +34,7 @@ class Julius(object):
             pass1_sentence = self.sh.before.decode(encoding='utf-8').strip()
             logging.error('get passphases')
             self.sh.expect('pass1_best_phonemeseq: ')
-            pass1_wordseq = self.sh.before.decode(encoding='utf-8').strip()
+            pass1_wordseq = self.sh.before.decode(encoding='utf-8').strip().replace('<s>', '').replace('</s>', '')
             self.sh.expect('pass1_best_score: ')
             pass1_phonemeseq = self.sh.before.decode(encoding='utf-8').strip()
             self.sh.expect('###')

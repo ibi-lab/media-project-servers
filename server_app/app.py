@@ -12,6 +12,7 @@ import datetime
 import os
 from os.path import isdir, isfile, join
 import signal
+import tempfile
 
 import platform
 from flask import abort
@@ -89,18 +90,19 @@ def speech_to_text():
                 logging.error('Julius speech to text is selected')
                 f = form.speech.data
                 fileName = secure_filename(f.filename)
-                filepath = os.path.join(
-                    app.instance_path, 'voices', fileName
-                )
-                if not os.path.exists(filepath):
-                    os.makedirs(os.path.dirname(filepath))
-                f.save(filepath)
-                logging.error(filepath)
+                # filepath = os.path.join(
+                #     app.instance_path, 'voices', fileName
+                # )
+                # if not os.path.exists(filepath):
+                #     os.makedirs(os.path.dirname(filepath))
+                temp = tempfile.NamedTemporaryFile()
+                f.save(temp.name)
+                logging.error(temp.name)
                 if '' == fileName:
                     make_response(jsonify({'error':'filename must not empty.'}))
 
                 julius = Julius()
-                return make_response(jsonify(julius.speech_to_text(filepath)))
+                return make_response(jsonify(julius.speech_to_text(temp.name)))
             elif engine == '2': ## Mode Kaldi
                 logging.error('Kaldi speech to text is selected')
                 f = form.speech.data
@@ -142,7 +144,7 @@ def speech_to_text():
                 logging.error('no mode')
         return render_template('stt.html', form=form)
     except:
-        return jsonify({'error': traceback.format_exc()})
+        return jsonify({'error': traceback.format_exc()}), 500
 
 
 @app.route('/stt_gcloud', methods=['GET', 'POST'])
@@ -186,7 +188,7 @@ def speech_to_text_with_gcloud():
         return render_template('stt.html', form=form)
     except:
         logging.error(traceback.format_exc())
-        return jsonify({'error': traceback.format_exc()})
+        return jsonify({'error': traceback.format_exc()}), 500
 
 
 @app.route('/stt_julius', methods=['GET', 'POST'])
@@ -210,7 +212,7 @@ def speech_to_text_with_julius():
             return make_response(jsonify(julius.speech_to_text(filepath)))
         return render_template('stt.html', form=form)
     except:
-        return jsonify({'error': traceback.format_exc()})
+        return jsonify({'error': traceback.format_exc()}), 500
 
 
 
@@ -234,7 +236,7 @@ def speech_to_text_with_vosk():
             return make_response(jsonify(json.loads(rec.Result())))
         return render_template_string('stt.html', form=form)
     except:
-        return jsonify({'error': traceback.format_exc()})
+        return jsonify({'error': traceback.format_exc()}), 500
 
 
 @app.errorhandler(werkzeug.exceptions.RequestEntityTooLarge)
@@ -275,7 +277,6 @@ def text_to_speech():
     # Get requested text
     # messages = json.loads(request.args['messages'])
     if not 'text' in request.args \
-        or not 'language' in request.args \
             or not 'gender' in request.args \
             or not 'input_type' in request.args:
         return jsonify({
@@ -283,7 +284,6 @@ def text_to_speech():
         })
     
     text = request.args['text']
-    language = request.args['language']
     gender = request.args['gender']
     input_type = request.args['input_type']
 
@@ -293,9 +293,9 @@ def text_to_speech():
     # Get the language list
     voices = client.list_voices()
     voice_codes_list = list(dict.fromkeys([voice.language_codes[0] for voice in voices.voices]))
-    language_list = [(ind + 1, voice) for ind, voice in enumerate(voice_codes_list)]
+    # language_list = [(ind + 1, voice) for ind, voice in enumerate(voice_codes_list)]
 
-    lang_ = dict(language_list).get(int(language))
+    # lang_ = dict(language_list).get(int(language))
     gender_ = dict(
         [(1, texttospeech.SsmlVoiceGender.MALE), (2, texttospeech.SsmlVoiceGender.FEMALE)]
     ).get(int(gender))
@@ -311,7 +311,7 @@ def text_to_speech():
     # Build the voice request, select the language code ("en-US") and the ssml
     # voice gender ("neutral")
     voice = texttospeech.VoiceSelectionParams(
-        language_code=lang_,
+        language_code='ja-JP',
         ssml_gender=gender_
     )
 

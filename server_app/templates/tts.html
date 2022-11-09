@@ -53,12 +53,9 @@
             // var url = new UR('/tts/convert');
             var search = new URLSearchParams(get_options); 
             var audio = $('<audio controls autoplaystyle="height: 30px; width: 500px;"></audio>');
+            console.log('/tts/convert?' + search.toString());
             audio.attr('src', '/tts/convert?' + search.toString());
-            // var download_link = $('<a class="btn btn-primary" download>合成されたファイル</a>');
-            // download_link.attr('href', '/tts/convert?' + search.toString());
             $('#tts_results').append(audio);
-            // $('#tts_results').append(download_link);
-
         });
 
     });
@@ -79,7 +76,6 @@
                         <br><br>
                         {{ form.text_field.label(class_='label-txt') }}<br>
                         {{ form.text_field(rows=10, cols=180, class_='form-control') }}<br>
-                        {{ form.language_options.label(class_='lang-label') }} {{ form.language_options(formnovalidate=True) }}<br>
                         {{ form.gender_options.label(class_='lang-label') }} {{ form.gender_options(formnovalidate=True) }}<br>
                         {{ form.input_type.label(class_='lang-label') }} {{ form.input_type(formnovalidate=True) }}
                     </div>
